@@ -1,8 +1,8 @@
 "set showmode "display current mode
 "set showcmd "display current mode
-set cursorline "highlight current line
+" set cursorline "highlight current line
 " set colorcolumn=80 " Highlight Characters that overstep the character limit
-set cursorcolumn
+" set cursorcolumn
 set nu
 
 " encoding is utf 8
@@ -61,7 +61,6 @@ nnoremap L gt
 "remove all binding pry
 "nnoremap <leader>b :g/binding/d1 <CR> :w <CR>
 let @b="obinding.pry0"
-
 
 "remove all iex pry
 nnoremap <leader>i :g/IEx.pry/d1 <CR> :w <CR>
@@ -149,6 +148,19 @@ set formatoptions-=t
 " Window Splits Do the splits
 noremap <Leader>s :split<CR>
 noremap <Leader>v :vsplit<CR>
+
+if bufwinnr(1)
+  " Add +40 to window size
+  " Ctrl-W + . (>)
+  map <C-W>. :vertical resize +40<CR>
+
+  " Add -40 to window size
+  " Ctrl-W + , (<)
+  map <C-W>, :vertical resize -40<CR>
+
+  " Set windows of equal size Ctr-W + Space
+  map <C-W><SPACE> <C-W>=
+endif
 
 " reselect visual block after indent
 vnoremap < <gv
@@ -247,7 +259,8 @@ augroup configgroup
   autocmd FileType qf wincmd J
   " -- Ruby Config --
   " common Ruby files without .rb
-  autocmd BufRead,BufNewFile {Berksfile,Vagrantfile,Procfile,config.ru,*.god,*.arb} set ft=ruby
+  autocmd BufRead,BufNewFile {Berksfile,*.common,Gemfile,Vagrantfile,Procfile,config.ru,*.god,*.arb} set ft=ruby
+  " autocmd BufRead,BufNewFile *.common set syntax=ruby
 
   autocmd BufWritePre *.php,*.py,*.js,*.txt,*,hs,*.java,*.md :call <SID>StripTrailingWhitespaces()
 
@@ -289,12 +302,69 @@ endif
 
 call plug#begin('~/.config/nvim/plugged')
 
+  " mappings for YARD documentation
+  Plug 'kkoomen/vim-doge'
+    let g:doge_enable_mappings = 1
+    let g:doge_doc_standard_ruby = 'YARD'
+    let g:doge_mapping  = '<Leader>yg'
 
+  " This starts the server for Solargraph
+  Plug 'autozimu/LanguageClient-neovim', {
+        \ 'branch': 'next',
+        \ 'do': 'bash install.sh',
+        \ }
+    " Tell the language client to use the default IP and port
+    " that Solargraph runs on
+    " https://blog.schembri.me/post/solargraph-in-vim/
+    " let g:LanguageClient_serverCommands = {
+    "       \ 'ruby': ['tcp://localhost:7658']
+    "       \ }
+
+
+    let g:LanguageClient_serverCommands = {
+          \ 'rust': ['~/.cargo/bin/rustup', 'run', 'stable', 'rls'],
+          \ 'javascript': ['/usr/local/bin/javascript-typescript-stdio'],
+          \ 'javascript.jsx': ['tcp://127.0.0.1:2089'],
+          \ 'python': ['/usr/local/bin/pyls'],
+          \ 'ruby': ['~/.rbenv/versions/2.5.7/bin/solargraph', 'stdio'],
+          \ }
+          "\ 'ruby': ['~/.rbenv/shims/solargraph', 'stdio'],
+          "\ }
+
+    " Don't send a stop signal to the server when exiting vim.
+    " This is optional, but I don't like having to restart Solargraph
+    " every time I restart vim.
+    let g:LanguageClient_autoStop = 0
+
+    " Configure ruby omni-completion to use the language client:
+    autocmd FileType ruby setlocal omnifunc=LanguageClient#complete
+
+    nnoremap <silent> K :call LanguageClient#textDocument_hover()<CR>
+    nnoremap <silent> gd :call LanguageClient#textDocument_definition()<CR>
+  Plug 'uplus/deoplete-solargraph', { 'do': ':UpdateRemotePlugins' }
+    " Omni
+    " let g:deoplete#sources.ruby = ['tag', 'omni', 'buffer', 'file', 'ultisnips']
+    " let g:deoplete#sources.eruby = ['tag', 'omni', 'buffer', 'file', 'ultisnips']
+
+    " Solargraph
+    " let g:deoplete#sources.ruby = ['tag', 'solargraph', 'buffer', 'file', 'ultisnips']
+    " let g:deoplete#sources.eruby = ['tag', 'solargraph', 'buffer', 'file', 'ultisnips']
   Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
     let g:deoplete#enable_at_startup = 1
+    let g:deoplete#enable_fuzzy_completion = 1
+
+
+    " let g:deoplete#custom#option({
+    "       \ 'auto_complete_delay': 200,
+    "       \ 'smart_case': v:true,
+    "       \ 'ignore_case': v:true,
+    "       \ })
+
     " use tab for completion
     inoremap <expr><tab> pumvisible() ? "\<C-N>" : "\<TAB>"
-
+  " Too much memory consumption for TabNine
+  " Plug 'tbodt/deoplete-tabnine', { 'do': './install.sh' }
+    " call deoplete#custom#var('tabnine', { 'line_limit': 500, 'max_num_results': 10, })
   Plug 'airblade/vim-gitgutter'
     highlight clear SignColumn
     highlight GitGutterAdd ctermfg=green guifg=darkgreen
@@ -340,7 +410,7 @@ call plug#begin('~/.config/nvim/plugged')
     let g:airline#extensions#tabline#formatter = 'unique_tail'
   Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
   Plug 'junegunn/fzf.vim'
-    let g:fzf_layout = {'down': '~20%'}
+    let g:fzf_layout = {'down': '~65%'}
 
     " [Buffers] Jump to the existing window if possible
     let g:fzf_buffers_jump = 1
@@ -382,16 +452,16 @@ call plug#begin('~/.config/nvim/plugged')
     nmap <Leader>T :Tags<CR>
     nmap <Leader>b :Buffers<CR>
     nmap <Leader>h :History<CR>
-    nmap <Leader>f :GFiles!<CR>
+    nmap <Leader>f :GFiles<CR>
     nmap <Leader>F :Files!<CR>
-  Plug 'ctrlpvim/ctrlp.vim'
-  Plug 'jasoncodes/ctrlp-modified.vim'
-    "modified since your last commit
-    map <Leader><C-b> :CtrlPModified<CR>
-    "modified on your current branch
-    map <Leader><C-m> :CtrlPBranch<CR>
-    "all modified - last two combined
-    map <Leader><C-a> :CtrlPBranchModified<CR>
+  " Plug 'ctrlpvim/ctrlp.vim'
+  " Plug 'jasoncodes/ctrlp-modified.vim'
+  "   "modified since your last commit
+  "   map <Leader><C-b> :CtrlPModified<CR>
+  "   "modified on your current branch
+  "   map <Leader><C-m> :CtrlPBranch<CR>
+  "   "all modified - last two combined
+  "   map <Leader><C-a> :CtrlPBranchModified<CR>
   Plug 'c-brenn/phoenix.vim'
     " Use The Silver Searcher https://github.com/ggreer/the_silver_searcher
     " Borrowed from @skwp
@@ -443,6 +513,7 @@ call plug#begin('~/.config/nvim/plugged')
   Plug 'jiangmiao/auto-pairs'
   Plug 'jreybert/vimagit'
     let g:magit_default_fold_level = 0
+  Plug 'jparise/vim-graphql'
   Plug 'junegunn/vim-easy-align'
     nmap <Leader>a <Plug>(EasyAlign)
     vmap <Leader>a <Plug>(EasyAlign)
@@ -454,6 +525,8 @@ call plug#begin('~/.config/nvim/plugged')
     let g:gutentags_file_list_command = 'ag -l'
     let g:gutentags_define_advanced_commands = 1
     let g:gutentags_exclude_filetypes = ['vim', 'markdown', 'text', 'config', 'yaml']
+
+  Plug 'rizzatti/dash.vim'
   Plug 'mileszs/ack.vim'
     cnoreabbrev ag Gcd <bar> Ack!
     nnoremap <Leader>k :Gcd <Bar> Ack! <cword><CR>
@@ -581,7 +654,8 @@ call plug#begin('~/.config/nvim/plugged')
     nnoremap <Leader>ge :Gedit<CR>
     nnoremap <Leader>gr :Gread<CR>
     nnoremap <Leader>gw :Gwrite<CR><CR>
-    nnoremap <Leader>gl :silent! Glog<CR>:bot copen<CR>
+    " nnoremap <Leader>gl :silent! Glog<CR>:bot copen<CR>
+    nnoremap <Leader>gl :0Glog<CR>
     nnoremap <Leader>gp :Ggrep<Space>
     "nnoremap <Leader>gm :Gmove<Space>
     nnoremap <Leader>go :Git checkout<Space>
@@ -655,6 +729,7 @@ call plug#begin('~/.config/nvim/plugged')
           \}
   Plug 'skywind3000/asyncrun.vim'
     autocmd BufWritePost *.js AsyncRun -post=checktime ./node_modules/.bin/eslint --fix %
+  Plug 'noprompt/vim-yardoc'
 call plug#end()
 
 set background=dark
